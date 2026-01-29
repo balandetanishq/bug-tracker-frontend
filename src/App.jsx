@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+const API_BASE = "https://bug-tracker-backend-2-24nh.onrender.com";
 export default function App() {
   // ---------------- PROJECT STATE ----------------
   const [projects, setProjects] = useState([]);
