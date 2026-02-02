@@ -1,39 +1,63 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
-import Login from "./pages/Login";
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://bug-tracker-backend-2-24hn.onrender.com";
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   const [projects, setProjects] = useState([]);
-  const [projectName, setProjectName] = useState("");
-
   const [bugs, setBugs] = useState([]);
+
+  const [projectName, setProjectName] = useState("");
   const [bugTitle, setBugTitle] = useState("");
   const [bugProject, setBugProject] = useState("");
   const [bugPriority, setBugPriority] = useState("Medium");
 
-  // ---------- LOAD DATA ----------
+  /* =========================
+     FETCH PROJECTS
+  ========================= */
+  const fetchProjects = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/projects`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      setProjects(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  /* =========================
+     FETCH BUGS
+  ========================= */
+  const fetchBugs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/bugs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      setBugs(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    if (!token) return;
-
-    const fetchData = async () => {
-      const pRes = await fetch(`${API_BASE}/api/projects`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProjects(await pRes.json());
-
-      const bRes = await fetch(`${API_BASE}/api/bugs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setBugs(await bRes.json());
-    };
-
-    fetchData();
+    if (token) {
+      fetchProjects();
+      fetchBugs();
+    }
   }, [token]);
 
-  // ---------- CREATE PROJECT ----------
+  /* =========================
+     CREATE PROJECT
+  ========================= */
   const createProject = async () => {
     if (!projectName.trim()) return;
 
@@ -43,20 +67,16 @@ export default function App() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        name: projectName,
-        description: "Auto project",
-      }),
+      body: JSON.stringify({ name: projectName }),
     });
 
     setProjectName("");
-    const res = await fetch(`${API_BASE}/api/projects`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setProjects(await res.json());
+    fetchProjects();
   };
 
-  // ---------- CREATE BUG ----------
+  /* =========================
+     CREATE BUG
+  ========================= */
   const createBug = async () => {
     if (!bugTitle || !bugProject) return;
 
@@ -69,93 +89,48 @@ export default function App() {
       body: JSON.stringify({
         title: bugTitle,
         project: bugProject,
-        status: "Open",
         priority: bugPriority,
-        description: "Auto bug",
+        status: "Open",
       }),
     });
 
     setBugTitle("");
     setBugProject("");
     setBugPriority("Medium");
-
-    const res = await fetch(`${API_BASE}/api/bugs`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setBugs(await res.json());
+    fetchBugs();
   };
 
-  // ---------- UPDATE STATUS ----------
-  const updateStatus = async (id, status) => {
-    await fetch(`${API_BASE}/api/bugs/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    const res = await fetch(`${API_BASE}/api/bugs`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setBugs(await res.json());
+  /* =========================
+     LOGOUT
+  ========================= */
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
   };
 
+  /* =========================
+     NOT LOGGED IN
+  ========================= */
   if (!token) {
     return (
-      <Login
-        onLogin={(jwt) => {
-          localStorage.setItem("token", jwt);
-          setToken(jwt);
-        }}
-      />
+      <div style={{ padding: "40px" }}>
+        <h2>Login first</h2>
+        <p>You are not authenticated.</p>
+      </div>
     );
   }
 
-  const renderColumn = (status) =>
-    bugs
-      .filter((b) => b.status === status)
-      .map((b) => (
-        <div
-          key={b._id}
-          style={{
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginBottom: "10px",
-            background: "#f9f9f9",
-          }}
-        >
-          <strong>{b.title}</strong>
-          <br />
-          Priority: {b.priority}
-          <br />
-          <select
-            value={b.status}
-            onChange={(e) => updateStatus(b._id, e.target.value)}
-          >
-            <option>Open</option>
-            <option>In Progress</option>
-            <option>Closed</option>
-          </select>
-        </div>
-      ));
-
+  /* =========================
+     UI
+  ========================= */
   return (
-    <div style={{ padding: "30px", maxWidth: "800px" }}>
+    <div style={{ padding: "30px", maxWidth: "1200px" }}>
       <h1>Bug Tracker</h1>
-
-      <button
-        onClick={() => {
-          localStorage.removeItem("token");
-          setToken(null);
-        }}
-      >
-        Logout
-      </button>
+      <button onClick={logout}>Logout</button>
 
       <hr />
 
+      {/* CREATE PROJECT */}
       <h2>Create Project</h2>
       <input
         value={projectName}
@@ -166,6 +141,7 @@ export default function App() {
 
       <hr />
 
+      {/* CREATE BUG */}
       <h2>Create Bug</h2>
       <input
         value={bugTitle}
@@ -198,24 +174,60 @@ export default function App() {
 
       <hr />
 
+      {/* STATUS BOARD */}
       <h2>Status Board</h2>
 
-      <div style={{ display: "flex", gap: "20px" }}>
-        <div style={{ width: "30%" }}>
+      <div style={{ display: "flex", gap: "40px" }}>
+        <div style={{ flex: 1 }}>
           <h3>Open</h3>
-          {renderColumn("Open")}
+          {bugs
+            .filter((b) => b.status === "Open")
+            .map((b) => (
+              <BugItem key={b._id} bug={b} />
+            ))}
         </div>
 
-        <div style={{ width: "30%" }}>
+        <div style={{ flex: 1 }}>
           <h3>In Progress</h3>
-          {renderColumn("In Progress")}
+          {bugs
+            .filter((b) => b.status === "In Progress")
+            .map((b) => (
+              <BugItem key={b._id} bug={b} />
+            ))}
         </div>
 
-        <div style={{ width: "30%" }}>
+        <div style={{ flex: 1 }}>
           <h3>Closed</h3>
-          {renderColumn("Closed")}
+          {bugs
+            .filter((b) => b.status === "Closed")
+            .map((b) => (
+              <BugItem key={b._id} bug={b} />
+            ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* =========================
+   BUG ITEM
+========================= */
+function BugItem({ bug }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #555",
+        padding: "10px",
+        marginBottom: "10px",
+      }}
+    >
+      <strong>{bug.title}</strong>
+      <br />
+      Project: {bug.project?.name || "N/A"}
+      <br />
+      Priority: {bug.priority}
+      <br />
+      Status: {bug.status}
     </div>
   );
 }
