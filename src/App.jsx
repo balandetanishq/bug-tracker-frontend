@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-const API = "https://bug-tracker-backend-2-24h.onrender.com";
+const API = "https://bug-tracker-backend-2-24nh.onrender.com";
 
 export default function App() {
   const [bugs, setBugs] = useState([]);
@@ -18,74 +18,97 @@ export default function App() {
   /* ---------------- LOGIN ---------------- */
 
   const login = async () => {
-    const res = await fetch(`${API}/api/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
-    console.log("LOGIN RESPONSE:", data);
+      const data = await res.json();
 
-    if (data.token) {
-      localStorage.setItem("token", data.token);
+      if (!res.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
+
       setToken(data.token);
-      fetchBugs(data.token);
-    } else {
+      localStorage.setItem("token", data.token);
+    } catch (err) {
+      console.error(err);
       alert("Login failed");
     }
   };
 
   /* ---------------- FETCH BUGS ---------------- */
 
-  const fetchBugs = async (authToken = token) => {
-    const res = await fetch(`${API}/api/bugs`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
+  const fetchBugs = useCallback(async () => {
+    if (!token) return;
 
-    const data = await res.json();
-    setBugs(data);
-  };
+    try {
+      const res = await fetch(`${API}/api/bugs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setBugs(data);
+      } else {
+        console.error("Fetch bugs failed:", data);
+      }
+    } catch (err) {
+      console.error("Error fetching bugs:", err);
+    }
+  }, [token]);
 
   /* ---------------- CREATE BUG ---------------- */
 
   const createBug = async () => {
-    await fetch(`${API}/api/bugs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        title,
-        description,
-        status: "Open",
-        priority: "Medium",
-      }),
-    });
+    try {
+      await fetch(`${API}/api/bugs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          status: "Open",
+          priority: "Medium",
+        }),
+      });
 
-    setTitle("");
-    setDescription("");
-    fetchBugs();
+      setTitle("");
+      setDescription("");
+      fetchBugs();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   /* ---------------- UPDATE STATUS ---------------- */
 
   const updateStatus = async (id, status) => {
-    await fetch(`${API}/api/bugs/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      await fetch(`${API}/api/bugs/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
 
-    fetchBugs();
+      fetchBugs();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   /* ---------------- LOGOUT ---------------- */
@@ -98,11 +121,33 @@ export default function App() {
 
   /* ---------------- AUTO LOAD ---------------- */
 
-  useEffect(() => {
-    if (token) {
-      fetchBugs();
+ /* ---------------- AUTO LOAD ---------------- */
+
+useEffect(() => {
+  if (!token) return;
+
+  const loadBugs = async () => {
+    try {
+      const res = await fetch(`${API}/api/bugs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setBugs(data);
+      } else {
+        console.error("Fetch bugs failed:", data);
+      }
+    } catch (err) {
+      console.error("Error fetching bugs:", err);
     }
-  }, [token]);
+  };
+
+  loadBugs();
+}, [token]);
 
   /* ---------------- FILTER ---------------- */
 
@@ -122,7 +167,7 @@ export default function App() {
   if (!token) {
     return (
       <div style={{ padding: "40px", color: "white" }}>
-        <h2>Login First</h2>
+        <h2>Login</h2>
 
         <input
           placeholder="Email"
@@ -155,8 +200,6 @@ export default function App() {
 
       <hr />
 
-      {/* Create Bug */}
-
       <h3>Create Bug</h3>
 
       <input
@@ -179,8 +222,6 @@ export default function App() {
 
       <hr />
 
-      {/* Filters */}
-
       <input
         placeholder="Search"
         value={search}
@@ -198,8 +239,6 @@ export default function App() {
       </select>
 
       <hr />
-
-      {/* Bugs */}
 
       {filteredBugs.map((bug) => (
         <div
