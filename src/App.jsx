@@ -50,46 +50,58 @@ export default function App() {
 
   // ================= BUGS =================
 
-  const fetchBugs = async () => {
+const fetchBugs = async () => {
+  try {
     const res = await fetch(API + "/api/bugs", {
       headers: {
+        "Content-Type": "application/json",
         Authorization: "Bearer " + token,
       },
     });
 
     const data = await res.json();
     setBugs(Array.isArray(data) ? data : []);
-  };
+  } catch {
+    setBugs([]);
+  }
+};
 
-  const addBug = async () => {
-    await fetch(API + "/api/bugs", {
-      method: "POST",
+const addBug = async () => {
+  if (!title || !desc) return;
+
+  await fetch(API + "/api/bugs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({
+      title,
+      description: desc,
+      status: "Open",
+    }),
+  });
+
+  setTitle("");
+  setDesc("");
+  fetchBugs();
+};
+
+const delBug = async (id) => {
+  try {
+    await fetch(API + "/api/bugs/" + id, {
+      method: "DELETE",
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer " + token,
       },
-      body: JSON.stringify({
-        title,
-        description: desc,
-        status: "Open",
-      }),
     });
 
-    setTitle("");
-    setDesc("");
-    fetchBugs();
-  };
-
-  const delBug = async (id) => {
-    await fetch(API + "/api/bugs/" + id, {
-      method: "DELETE",
-      headers: {
-        Authorization: "Bearer " + token,
-      },
-    });
-
-    fetchBugs();
-  };
+    fetchBugs(); // reload list
+  } catch (err) {
+    console.error("Delete failed", err);
+  }
+};
 
 useEffect(() => {
   if (!token) return;
@@ -102,16 +114,20 @@ useEffect(() => {
 }, [token]);
 
 const updateStatus = async (id, status) => {
-  await fetch(API + "/api/bugs/" + id, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + token,
-    },
-    body: JSON.stringify({ status }),
-  });
+  try {
+    await fetch(API + "/api/bugs/" + id, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ status }),
+    });
 
-  fetchBugs();
+    fetchBugs(); // reload list
+  } catch (err) {
+    console.error("Update failed", err);
+  }
 };
 
   // ================= UI =================
@@ -202,45 +218,39 @@ const updateStatus = async (id, status) => {
       (bug) => filter === "All" || bug.status === filter
     )
     .map((bug) => (
-      <div
-        key={bug._id}
-        className="bg-blue-800/40 p-4 rounded-lg mb-4 text-white"
-      >
-        {/* Title */}
-        <h3 className="text-lg font-bold">
-          {bug.title}
-        </h3>
+       <div
+    key={bug._id}
+    className="bg-gray-800 p-4 rounded shadow"
+  >
+    <h4 className="text-xl font-semibold">
+      {bug.title}
+    </h4>
 
-        {/* Description */}
-        <p className="text-sm text-gray-200 mb-2">
-          {bug.description}
-        </p>
+    <p className="text-gray-400">
+      {bug.description}
+    </p>
 
-        {/* Status */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-sm">Status:</span>
+    <p>Status: {bug.status}</p>
 
-          <select
-            value={bug.status}
-            onChange={(e) =>
-              updateStatus(bug._id, e.target.value)
-            }
-            className="bg-blue-900 text-white px-2 py-1 rounded"
-          >
-            <option>Open</option>
-            <option>In Progress</option>
-            <option>Closed</option>
-          </select>
-        </div>
+    <select
+      value={bug.status}
+      onChange={(e) =>
+        updateStatus(bug._id, e.target.value)
+      }
+      className="bg-gray-700 p-1 rounded"
+    >
+      <option>Open</option>
+      <option>In Progress</option>
+      <option>Closed</option>
+    </select>
 
-        {/* Delete */}
-        <button
-          onClick={() => delBug(bug._id)}
-          className="bg-orange-500 hover:bg-orange-600 px-4 py-1 rounded"
-        >
-          Delete
-        </button>
-      </div>
+    <button
+      onClick={() => delBug(bug._id)}
+      className="mt-2 bg-red-600 px-3 py-1 rounded hover:bg-red-700"
+    >
+      Delete
+    </button>
+  </div>
     ))}
 </div>
       </ul>
