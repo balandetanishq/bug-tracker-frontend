@@ -1,148 +1,236 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
-const API_URL = "https://bug-tracker-backend-2-24nh.onrender.com";
+const API = "http://localhost:5000";
 
-function App() {
+export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [token, setToken] = useState(
-    localStorage.getItem("token") || ""
+    localStorage.getItem("token")
   );
 
   const [bugs, setBugs] = useState([]);
+  const [filter, setFilter] = useState("All");
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
 
-  // ================= LOGIN =================
+  // ================= AUTH =================
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const login = async () => {
+    const res = await fetch(API + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message || "Login failed");
-        return;
-      }
-
+    if (data.token) {
       localStorage.setItem("token", data.token);
       setToken(data.token);
-    } catch (err) {
-      console.error("Login error:", err);
-      alert("Login failed");
+    } else {
+      alert(data);
     }
   };
 
-  // ================= FETCH BUGS =================
+  const register = async () => {
+    await fetch(API + "/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const fetchBugs = useCallback(async () => {
-    if (!token) return;
+    alert("Registered. Now login.");
+  };
 
-    try {
-      const res = await fetch(`${API_URL}/api/bugs`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
+  };
 
-      const data = await res.json();
+  // ================= BUGS =================
 
-      if (!res.ok || !Array.isArray(data)) {
-        console.error("Invalid bugs response:", data);
-        setBugs([]);
-        return;
-      }
+  const fetchBugs = async () => {
+    const res = await fetch(API + "/api/bugs", {
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
 
-      setBugs(data);
-    } catch (err) {
-      console.error("Fetch bugs failed:", err);
-      setBugs([]);
-    }
-  }, [token]);
+    const data = await res.json();
+    setBugs(data);
+  };
 
-  // ================= LOAD AFTER LOGIN =================
+  const addBug = async () => {
+    await fetch(API + "/api/bugs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        title,
+        description: desc,
+        status: "Open",
+      }),
+    });
+
+    setTitle("");
+    setDesc("");
+    fetchBugs();
+  };
+
+  const delBug = async (id) => {
+    await fetch(API + "/api/bugs/" + id, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
+
+    fetchBugs();
+  };
 
 useEffect(() => {
   if (!token) return;
 
-  const loadBugs = async () => {
+  const load = async () => {
     await fetchBugs();
   };
 
-  loadBugs();
-}, [token, fetchBugs]);
+  load();
+}, [token]);
 
-  // ================= LOGOUT =================
+const updateStatus = async (id, status) => {
+  await fetch(API + "/api/bugs/" + id, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({ status }),
+  });
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setToken("");
-    setBugs([]);
-  };
+  fetchBugs();
+};
 
   // ================= UI =================
 
   if (!token) {
     return (
-      <div style={{ padding: "50px", fontFamily: "Arial" }}>
-        <h2>Login</h2>
+      <div className="app">
+        <h2>Bug Tracker</h2>
 
-        <form onSubmit={handleLogin}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            required
-            onChange={(e) => setEmail(e.target.value)}
-          />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
+        />
 
-          <br />
-          <br />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) =>
+            setPassword(e.target.value)
+          }
+        />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            required
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <br />
-          <br />
-
-          <button type="submit">Login</button>
-        </form>
+        <button onClick={login}>Login</button>
+        <button onClick={register}>
+          Register
+        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "50px", fontFamily: "Arial" }}>
-      <h2>Bug Tracker Dashboard</h2>
+    <div className="app">
+      <h2 className ="text-xl font-bold mb-4"> Dashboard</h2>
+      <select
+  value={filter}
+  onChange={(e) => setFilter(e.target.value)}
+  className="mb-4 bg-slate-700 text-white rounded px-2 py-1"
+>
+  <option>All</option>
+  <option>Open</option>
+  <option>In Progress</option>
+  <option>Closed</option>
+</select>
 
-      <button onClick={logout}>Logout</button>
+      <button onClick={logout}>
+        Logout
+      </button>
 
-      <h3>Bugs</h3>
+      <input
+        placeholder="Bug title"
+        value={title}
+        onChange={(e) =>
+          setTitle(e.target.value)
+        }
+        className="w-full p-2 rounded bg-white text-black outline-none border border-gray-300 focus:ring-2 focus:ring-cyan-400"
+      />
 
-      {bugs.length === 0 && <p>No bugs found</p>}
+      <input
+        placeholder="Description"
+        value={desc}
+        onChange={(e) =>
+          setDesc(e.target.value)
+        }
+        className="w-full p-2 rounded bg-white text-black outline-none border border-gray-300 focus:ring-2 focus:ring-cyan-400"
+      />
+
+      <button onClick={addBug}>
+        Add Bug
+      </button>
 
       <ul>
-        {bugs.map((bug) => (
-          <li key={bug._id}>
-            <b>{bug.title}</b> - {bug.status}
-          </li>
-        ))}
+        <div className="mt-6 w-full max-w-md space-y-3">
+  {bugs.length === 0 && (
+    <p className="text-gray-300 text-center">No bugs found</p>
+  )}
+
+  {bugs
+  .filter(
+    (bug) => filter === "All" || bug.status === filter
+  )
+  .map((bug) => (
+    <div
+      key={bug._id}
+      className="bg-slate-800 text-white p-3 rounded shadow flex justify-between items-center"
+    >
+      <div>
+        <h3 className="font-semibold">{bug.title}</h3>
+        <p className="text-sm text-gray-300">{bug.description}</p>
+<p className="text-xs text-cyan-400 mt-1">
+  Status: {bug.status}
+</p>
+      </div>
+
+      <select
+  value={bug.status}
+  onChange={(e) =>
+    updateStatus(bug._id, e.target.value)
+  }
+  className="bg-slate-700 text-white text-sm rounded px-1 mr-2"
+>
+  <option>Open</option>
+  <option>In Progress</option>
+  <option>Closed</option>
+</select>
+
+      <button
+        onClick={() => delBug(bug._id)}
+        className="bg-red-500 px-2 py-1 rounded text-sm hover:bg-red-600"
+      >
+        Delete
+      </button>
+    </div>
+  ))}
+</div>
       </ul>
     </div>
   );
 }
-
-export default App;

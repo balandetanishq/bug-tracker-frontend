@@ -1,4 +1,57 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
+body {
+  background: linear-gradient(135deg, #020617, #0f172a);
+  color: white;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+}
+
+#root {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.app {
+  background: rgba(15,23,42,0.95);
+  padding: 30px;
+  border-radius: 12px;
+  width: 400px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+li {
+  background: #020617;
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 5px;
+}
