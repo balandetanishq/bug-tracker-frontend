@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "http://localhost:5000";
+const API = "https://bug-tracker-backend-2-24nh.onrender.com/";
 
 export default function App() {
   const [email, setEmail] = useState("");
