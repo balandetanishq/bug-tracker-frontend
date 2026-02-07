@@ -1,25 +1,24 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "https://bug-tracker-backend-2-24nh.onrender.com";
+const API_URL = "https://bug-tracker-backend-2-24nh.onrender.com";
 
-export default function App() {
-  const [bugs, setBugs] = useState([]);
-  const [token, setToken] = useState(localStorage.getItem("token") || "");
-
+function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [token, setToken] = useState(
+    localStorage.getItem("token") || ""
+  );
 
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [bugs, setBugs] = useState([]);
 
-  /* ---------------- LOGIN ---------------- */
+  // ================= LOGIN =================
 
-  const login = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
     try {
-      const res = await fetch(`${API}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -34,21 +33,21 @@ export default function App() {
         return;
       }
 
-      setToken(data.token);
       localStorage.setItem("token", data.token);
+      setToken(data.token);
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
       alert("Login failed");
     }
   };
 
-  /* ---------------- FETCH BUGS ---------------- */
+  // ================= FETCH BUGS =================
 
   const fetchBugs = useCallback(async () => {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API}/api/bugs`, {
+      const res = await fetch(`${API_URL}/api/bugs`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -56,62 +55,32 @@ export default function App() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        setBugs(data);
-      } else {
-        console.error("Fetch bugs failed:", data);
+      if (!res.ok || !Array.isArray(data)) {
+        console.error("Invalid bugs response:", data);
+        setBugs([]);
+        return;
       }
+
+      setBugs(data);
     } catch (err) {
-      console.error("Error fetching bugs:", err);
+      console.error("Fetch bugs failed:", err);
+      setBugs([]);
     }
   }, [token]);
 
-  /* ---------------- CREATE BUG ---------------- */
+  // ================= LOAD AFTER LOGIN =================
 
-  const createBug = async () => {
-    try {
-      await fetch(`${API}/api/bugs`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          status: "Open",
-          priority: "Medium",
-        }),
-      });
+useEffect(() => {
+  if (!token) return;
 
-      setTitle("");
-      setDescription("");
-      fetchBugs();
-    } catch (err) {
-      console.error(err);
-    }
+  const loadBugs = async () => {
+    await fetchBugs();
   };
 
-  /* ---------------- UPDATE STATUS ---------------- */
+  loadBugs();
+}, [token, fetchBugs]);
 
-  const updateStatus = async (id, status) => {
-    try {
-      await fetch(`${API}/api/bugs/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      fetchBugs();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  /* ---------------- LOGOUT ---------------- */
+  // ================= LOGOUT =================
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -119,152 +88,61 @@ export default function App() {
     setBugs([]);
   };
 
-  /* ---------------- AUTO LOAD ---------------- */
-
- /* ---------------- AUTO LOAD ---------------- */
-
-useEffect(() => {
-  if (!token) return;
-
-  const loadBugs = async () => {
-    try {
-      const res = await fetch(`${API}/api/bugs`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setBugs(data);
-      } else {
-        console.error("Fetch bugs failed:", data);
-      }
-    } catch (err) {
-      console.error("Error fetching bugs:", err);
-    }
-  };
-
-  loadBugs();
-}, [token]);
-
-  /* ---------------- FILTER ---------------- */
-
-  const filteredBugs = bugs.filter((bug) => {
-    const matchSearch = bug.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
-
-    const matchFilter =
-      filter === "All" ? true : bug.status === filter;
-
-    return matchSearch && matchFilter;
-  });
-
-  /* ---------------- UI ---------------- */
+  // ================= UI =================
 
   if (!token) {
     return (
-      <div style={{ padding: "40px", color: "white" }}>
+      <div style={{ padding: "50px", fontFamily: "Arial" }}>
         <h2>Login</h2>
 
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            required
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        <br />
+          <br />
+          <br />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            required
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        <br />
-        <br />
+          <br />
+          <br />
 
-        <button onClick={login}>Login</button>
+          <button type="submit">Login</button>
+        </form>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "30px", color: "white" }}>
-      <h1>Bug Tracker</h1>
+    <div style={{ padding: "50px", fontFamily: "Arial" }}>
+      <h2>Bug Tracker Dashboard</h2>
 
       <button onClick={logout}>Logout</button>
 
-      <hr />
+      <h3>Bugs</h3>
 
-      <h3>Create Bug</h3>
+      {bugs.length === 0 && <p>No bugs found</p>}
 
-      <input
-        placeholder="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-
-      <br />
-
-      <input
-        placeholder="Description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-
-      <br />
-
-      <button onClick={createBug}>Add Bug</button>
-
-      <hr />
-
-      <input
-        placeholder="Search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      <select
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      >
-        <option>All</option>
-        <option>Open</option>
-        <option>In Progress</option>
-        <option>Closed</option>
-      </select>
-
-      <hr />
-
-      {filteredBugs.map((bug) => (
-        <div
-          key={bug._id}
-          style={{
-            border: "1px solid white",
-            margin: "10px",
-            padding: "10px",
-          }}
-        >
-          <h4>{bug.title}</h4>
-          <p>{bug.description}</p>
-          <p>Status: {bug.status}</p>
-
-          <select
-            value={bug.status}
-            onChange={(e) =>
-              updateStatus(bug._id, e.target.value)
-            }
-          >
-            <option>Open</option>
-            <option>In Progress</option>
-            <option>Closed</option>
-          </select>
-        </div>
-      ))}
+      <ul>
+        {bugs.map((bug) => (
+          <li key={bug._id}>
+            <b>{bug.title}</b> - {bug.status}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
+
+export default App;
