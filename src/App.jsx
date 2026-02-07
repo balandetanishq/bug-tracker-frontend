@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API = "https://bug-tracker-backend-2-24nh.onrender.com";
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -58,7 +58,7 @@ export default function App() {
     });
 
     const data = await res.json();
-    setBugs(data);
+    setBugs(Array.isArray(data) ? data : []);
   };
 
   const addBug = async () => {
@@ -188,47 +188,60 @@ const updateStatus = async (id, status) => {
 
       <ul>
         <div className="mt-6 w-full max-w-md space-y-3">
-  {bugs.length === 0 && (
-    <p className="text-gray-300 text-center">No bugs found</p>
-  )}
+  {/* No Bugs Message */}
+{Array.isArray(bugs) && bugs.length === 0 && (
+  <p className="text-gray-300 text-center mt-4">
+    No bugs found
+  </p>
+)}
 
-  {bugs
-  .filter(
-    (bug) => filter === "All" || bug.status === filter
-  )
-  .map((bug) => (
-    <div
-      key={bug._id}
-      className="bg-slate-800 text-white p-3 rounded shadow flex justify-between items-center"
-    >
-      <div>
-        <h3 className="font-semibold">{bug.title}</h3>
-        <p className="text-sm text-gray-300">{bug.description}</p>
-<p className="text-xs text-cyan-400 mt-1">
-  Status: {bug.status}
-</p>
-      </div>
-
-      <select
-  value={bug.status}
-  onChange={(e) =>
-    updateStatus(bug._id, e.target.value)
-  }
-  className="bg-slate-700 text-white text-sm rounded px-1 mr-2"
->
-  <option>Open</option>
-  <option>In Progress</option>
-  <option>Closed</option>
-</select>
-
-      <button
-        onClick={() => delBug(bug._id)}
-        className="bg-red-500 px-2 py-1 rounded text-sm hover:bg-red-600"
+{/* Bug List */}
+{Array.isArray(bugs) &&
+  bugs
+    .filter(
+      (bug) => filter === "All" || bug.status === filter
+    )
+    .map((bug) => (
+      <div
+        key={bug._id}
+        className="bg-blue-800/40 p-4 rounded-lg mb-4 text-white"
       >
-        Delete
-      </button>
-    </div>
-  ))}
+        {/* Title */}
+        <h3 className="text-lg font-bold">
+          {bug.title}
+        </h3>
+
+        {/* Description */}
+        <p className="text-sm text-gray-200 mb-2">
+          {bug.description}
+        </p>
+
+        {/* Status */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm">Status:</span>
+
+          <select
+            value={bug.status}
+            onChange={(e) =>
+              updateStatus(bug._id, e.target.value)
+            }
+            className="bg-blue-900 text-white px-2 py-1 rounded"
+          >
+            <option>Open</option>
+            <option>In Progress</option>
+            <option>Closed</option>
+          </select>
+        </div>
+
+        {/* Delete */}
+        <button
+          onClick={() => delBug(bug._id)}
+          className="bg-orange-500 hover:bg-orange-600 px-4 py-1 rounded"
+        >
+          Delete
+        </button>
+      </div>
+    ))}
 </div>
       </ul>
     </div>
