@@ -1,272 +1,283 @@
 import { useState, useEffect, useCallback } from "react";
 
 const API = "https://bug-tracker-backend-2-24nh.onrender.com";
-
 export default function App() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [token, setToken] = useState(
-    localStorage.getItem("token")
-  );
-
-  const [bugs, setBugs] = useState([]);
-  const [filter, setFilter] = useState("All");
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-
   // ================= AUTH =================
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [token, setToken] = useState(localStorage.getItem("token"));
+
+  // ================= BUGS =================
+
+  const [bugs, setBugs] = useState([]);
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [filter, setFilter] = useState("All");
+
+  // ================= LOGIN =================
+
   const login = async () => {
-    const res = await fetch(API + "/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch(API + "/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.token) {
+      if (!res.ok) return alert(data.message || "Login failed");
+
       localStorage.setItem("token", data.token);
       setToken(data.token);
-    } else {
-      alert(data);
+    } catch {
+      alert("Login error");
     }
   };
 
-  const register = async () => {
-    await fetch(API + "/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+  // ================= REGISTER =================
 
-    alert("Registered. Now login.");
+  const register = async () => {
+    try {
+      const res = await fetch(API + "/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) return alert(data.message || "Register failed");
+
+      alert("Registered. Now login.");
+    } catch {
+      alert("Register error");
+    }
   };
+
+  // ================= LOGOUT =================
 
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
   };
 
-  // ================= BUGS =================
+  // ================= FETCH BUGS =================
 
-  const createBug = async () => {
-  if (!title.trim()) return;
+  const fetchBugs = useCallback(async () => {
+    if (!token) return;
 
-  try {
-    const res = await fetch(API + "/api/bugs", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({
-        title,
-        desc,
-        status: "Open",
-        priority: "Medium",
-      }),
-    });
+    try {
+      const res = await fetch(API + "/api/bugs", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Create failed:", err);
-      return;
+      const data = await res.json();
+      setBugs(Array.isArray(data) ? data : []);
+    } catch {
+      console.error("Fetch failed");
     }
+  }, [token]);
 
-    setTitle("");
-    setDesc("");
+  useEffect(() => {
+    if (token) fetchBugs();
+  }, [token, fetchBugs]);
 
-    await fetchBugs(); // wait properly
+  // ================= ADD BUG =================
 
-  } catch (err) {
-    console.error("Create error:", err);
-  }
-};
+  const addBug = async () => {
+    if (!title.trim()) return;
 
-const fetchBugs = useCallback(async () => {
-  try {
-    const res = await fetch(API + "/api/bugs", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-    });
+    try {
+      const res = await fetch(API + "/api/bugs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ title, desc }),
+      });
 
-    if (!res.ok) return;
+      if (!res.ok) throw new Error();
 
-    const data = await res.json();
-    setBugs(data);
-  } catch (err) {
-    console.error(err);
-  }
-}, [token]);
+      setTitle("");
+      setDesc("");
 
+      await fetchBugs();
+    } catch {
+      alert("Add failed");
+    }
+  };
 
-const delBug = async (id) => {
-  try {
-    await fetch(API + "/api/bugs/" + id, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-    });
+  // ================= DELETE BUG =================
 
-    fetchBugs(); // reload list
-  } catch (err) {
-    console.error("Delete failed", err);
-  }
-};
+  const delBug = async (id) => {
+    try {
+      await fetch(API + "/api/bugs/" + id, {
+        method: "DELETE",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
-useEffect(() => {
-  if (token) fetchBugs();
-}, [token, fetchBugs]);
+      fetchBugs();
+    } catch {
+      alert("Delete failed");
+    }
+  };
 
-const updateStatus = async (id, status) => {
-  try {
-    await fetch(API + "/api/bugs/" + id, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({ status }),
-    });
+  // ================= UPDATE STATUS =================
 
-    fetchBugs(); // reload list
-  } catch (err) {
-    console.error("Update failed", err);
-  }
-};
+  const updateStatus = async (id, status) => {
+    try {
+      await fetch(API + "/api/bugs/" + id, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({ status }),
+      });
 
-  // ================= UI =================
+      fetchBugs();
+    } catch {
+      alert("Update failed");
+    }
+  };
+
+  // ================= FILTER =================
+
+  const filteredBugs = bugs.filter(
+    (b) => filter === "All" || b.status === filter
+  );
+
+  // ================= LOGIN UI =================
 
   if (!token) {
     return (
-      <div className="app">
-        <h2>Bug Tracker</h2>
+      <div className="min-h-screen flex items-center justify-center bg-blue-900">
+        <div className="bg-blue-800 p-6 rounded w-80 space-y-3">
+          <h2 className="text-white text-xl text-center">Login</h2>
 
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
-        />
+          <input
+            className="w-full p-2 rounded text-black"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) =>
-            setPassword(e.target.value)
-          }
-        />
+          <input
+            type="password"
+            className="w-full p-2 rounded text-black"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        <button onClick={login}>Login</button>
-        <button onClick={register}>
-          Register
-        </button>
+          <button
+            onClick={login}
+            className="w-full bg-cyan-500 py-2 rounded text-white"
+          >
+            Login
+          </button>
+
+          <button
+            onClick={register}
+            className="w-full bg-gray-600 py-2 rounded text-white"
+          >
+            Register
+          </button>
+        </div>
       </div>
     );
   }
 
+  // ================= DASHBOARD =================
+
   return (
-    <div className="app">
-      <h2 className ="text-xl font-bold mb-4"> Dashboard</h2>
-      <select
-  value={filter}
-  onChange={(e) => setFilter(e.target.value)}
-  className="mb-4 bg-slate-700 text-white rounded px-2 py-1"
->
-  <option>All</option>
-  <option>Open</option>
-  <option>In Progress</option>
-  <option>Closed</option>
-</select>
+    <div className="min-h-screen bg-blue-900 flex justify-center pt-10">
+      <div className="bg-blue-800 w-full max-w-md p-6 rounded space-y-4">
 
-      <button onClick={logout}>
-        Logout
-      </button>
+        <h2 className="text-white text-xl text-center">Dashboard</h2>
 
-      <input
-        placeholder="Bug title"
-        value={title}
-        onChange={(e) =>
-          setTitle(e.target.value)
-        }
-        className="w-full p-2 rounded bg-white text-black outline-none border border-gray-300 focus:ring-2 focus:ring-cyan-400"
-      />
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="w-full p-2 rounded text-black"
+        >
+          <option>All</option>
+          <option>Open</option>
+          <option>Closed</option>
+        </select>
 
-      <input
-        placeholder="Description"
-        value={desc}
-        onChange={(e) =>
-          setDesc(e.target.value)
-        }
-        className="w-full p-2 rounded bg-white text-black outline-none border border-gray-300 focus:ring-2 focus:ring-cyan-400"
-      />
+        <button
+          onClick={logout}
+          className="w-full bg-red-500 py-2 rounded text-white"
+        >
+          Logout
+        </button>
 
-      <button
-  onClick={createBug}
-  className="w-full bg-cyan-500 text-white py-2 rounded hover:bg-cyan-600"
->
-  Add Bug
-</button>
+        <input
+          className="w-full p-2 rounded text-black"
+          placeholder="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
 
-      <ul>
-        <div className="mt-6 w-full max-w-md space-y-3">
-  {/* No Bugs Message */}
-{Array.isArray(bugs) && bugs.length === 0 && (
-  <p className="text-gray-300 text-center mt-4">
-    No bugs found
-  </p>
-)}
+        <textarea
+          className="w-full p-2 rounded text-black"
+          placeholder="Description"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+        />
 
-{/* Bug List */}
-{Array.isArray(bugs) &&
-  bugs
-    .filter(
-      (bug) => filter === "All" || bug.status === filter
-    )
-    .map((bug) => (
-       <div
-    key={bug._id}
-    className="bg-gray-800 p-4 rounded shadow"
-  >
-    <h4 className="text-xl font-semibold">
-      {bug.title}
-    </h4>
+        <button
+          onClick={addBug}
+          className="w-full bg-cyan-500 py-2 rounded text-white"
+        >
+          Add Bug
+        </button>
 
-    <p className="text-gray-400">
-      {bug.description}
-    </p>
+        {filteredBugs.length === 0 && (
+          <p className="text-gray-300 text-center">No bugs found</p>
+        )}
 
-    <p>Status: {bug.status}</p>
+        {filteredBugs.map((b) => (
+          <div
+            key={b._id}
+            className="bg-blue-700 p-3 rounded text-white"
+          >
+            <h3 className="font-bold">{b.title}</h3>
+            <p>{b.desc}</p>
 
-    <select
-      value={bug.status}
-      onChange={(e) =>
-        updateStatus(bug._id, e.target.value)
-      }
-      className="bg-gray-700 p-1 rounded"
-    >
-      <option>Open</option>
-      <option>In Progress</option>
-      <option>Closed</option>
-    </select>
+            <div className="flex justify-between mt-2">
 
-    <button
-      onClick={() => delBug(bug._id)}
-      className="mt-2 bg-red-600 px-3 py-1 rounded hover:bg-red-700"
-    >
-      Delete
-    </button>
-  </div>
-    ))}
-</div>
-      </ul>
+              <select
+                value={b.status}
+                onChange={(e) =>
+                  updateStatus(b._id, e.target.value)
+                }
+                className="text-black p-1 rounded"
+              >
+                <option>Open</option>
+                <option>Closed</option>
+              </select>
+
+              <button
+                onClick={() => delBug(b._id)}
+                className="bg-orange-500 px-3 rounded"
+              >
+                Delete
+              </button>
+
+            </div>
+          </div>
+        ))}
+
+      </div>
     </div>
   );
 }
