@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "https://bug-tracker-backend-2-24nh.onrender.com/";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function App() {
   const [email, setEmail] = useState("");
