@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const API = "https://bug-tracker-backend-2-24nh.onrender.com";
 
@@ -50,7 +50,41 @@ export default function App() {
 
   // ================= BUGS =================
 
-const fetchBugs = async () => {
+  const createBug = async () => {
+  if (!title.trim()) return;
+
+  try {
+    const res = await fetch(API + "/api/bugs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        title,
+        desc,
+        status: "Open",
+        priority: "Medium",
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Create failed:", err);
+      return;
+    }
+
+    setTitle("");
+    setDesc("");
+
+    await fetchBugs(); // wait properly
+
+  } catch (err) {
+    console.error("Create error:", err);
+  }
+};
+
+const fetchBugs = useCallback(async () => {
   try {
     const res = await fetch(API + "/api/bugs", {
       headers: {
@@ -59,33 +93,15 @@ const fetchBugs = async () => {
       },
     });
 
+    if (!res.ok) return;
+
     const data = await res.json();
-    setBugs(Array.isArray(data) ? data : []);
-  } catch {
-    setBugs([]);
+    setBugs(data);
+  } catch (err) {
+    console.error(err);
   }
-};
+}, [token]);
 
-const addBug = async () => {
-  if (!title || !desc) return;
-
-  await fetch(API + "/api/bugs", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + token,
-    },
-    body: JSON.stringify({
-      title,
-      description: desc,
-      status: "Open",
-    }),
-  });
-
-  setTitle("");
-  setDesc("");
-  fetchBugs();
-};
 
 const delBug = async (id) => {
   try {
@@ -104,14 +120,8 @@ const delBug = async (id) => {
 };
 
 useEffect(() => {
-  if (!token) return;
-
-  const load = async () => {
-    await fetchBugs();
-  };
-
-  load();
-}, [token]);
+  if (token) fetchBugs();
+}, [token, fetchBugs]);
 
 const updateStatus = async (id, status) => {
   try {
@@ -198,9 +208,12 @@ const updateStatus = async (id, status) => {
         className="w-full p-2 rounded bg-white text-black outline-none border border-gray-300 focus:ring-2 focus:ring-cyan-400"
       />
 
-      <button onClick={addBug}>
-        Add Bug
-      </button>
+      <button
+  onClick={createBug}
+  className="w-full bg-cyan-500 text-white py-2 rounded hover:bg-cyan-600"
+>
+  Add Bug
+</button>
 
       <ul>
         <div className="mt-6 w-full max-w-md space-y-3">
