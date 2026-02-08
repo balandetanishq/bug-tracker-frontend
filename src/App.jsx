@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 
 const API = "https://bug-tracker-backend-2-24nh.onrender.com";
+
 export default function App() {
   // ================= AUTH =================
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState(localStorage.getItem("token"));
+
+  const [token, setToken] = useState(
+    localStorage.getItem("token")
+  );
 
   // ================= BUGS =================
 
@@ -21,18 +25,23 @@ export default function App() {
     try {
       const res = await fetch(API + "/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) return alert(data.message || "Login failed");
+      if (!res.ok) {
+        alert(data);
+        return;
+      }
 
       localStorage.setItem("token", data.token);
       setToken(data.token);
     } catch {
-      alert("Login error");
+      alert("Login failed");
     }
   };
 
@@ -42,17 +51,22 @@ export default function App() {
     try {
       const res = await fetch(API + "/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) return alert(data.message || "Register failed");
+      if (!res.ok) {
+        alert(data);
+        return;
+      }
 
       alert("Registered. Now login.");
     } catch {
-      alert("Register error");
+      alert("Register failed");
     }
   };
 
@@ -61,6 +75,7 @@ export default function App() {
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
+    setBugs([]);
   };
 
   // ================= FETCH BUGS =================
@@ -76,9 +91,12 @@ export default function App() {
       });
 
       const data = await res.json();
-      setBugs(Array.isArray(data) ? data : []);
+
+      if (res.ok) {
+        setBugs(data);
+      }
     } catch {
-      console.error("Fetch failed");
+      console.log("Fetch failed");
     }
   }, [token]);
 
@@ -88,7 +106,7 @@ export default function App() {
 
   // ================= ADD BUG =================
 
-  const addBug = async () => {
+  const createBug = async () => {
     if (!title.trim()) return;
 
     try {
@@ -98,15 +116,21 @@ export default function App() {
           "Content-Type": "application/json",
           Authorization: "Bearer " + token,
         },
-        body: JSON.stringify({ title, desc }),
+        body: JSON.stringify({
+          title,
+          description: desc,
+        }),
       });
 
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        alert("Add failed");
+        return;
+      }
 
       setTitle("");
       setDesc("");
 
-      await fetchBugs();
+      fetchBugs();
     } catch {
       alert("Add failed");
     }
@@ -158,50 +182,58 @@ export default function App() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-900">
-        <div className="bg-blue-800 p-6 rounded w-80 space-y-3">
-          <h2 className="text-white text-xl text-center">Login</h2>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-indigo-900 text-white">
+        <div className="bg-blue-800 p-8 rounded-xl w-80 space-y-4">
+
+          <h2 className="text-2xl text-center font-bold">
+            Bug Tracker
+          </h2>
 
           <input
-            className="w-full p-2 rounded text-black"
+            type="email"
             placeholder="Email"
+            className="w-full p-2 rounded text-black"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <input
             type="password"
-            className="w-full p-2 rounded text-black"
             placeholder="Password"
+            className="w-full p-2 rounded text-black"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
 
           <button
             onClick={login}
-            className="w-full bg-cyan-500 py-2 rounded text-white"
+            className="w-full bg-green-500 py-2 rounded"
           >
             Login
           </button>
 
           <button
             onClick={register}
-            className="w-full bg-gray-600 py-2 rounded text-white"
+            className="w-full bg-yellow-500 py-2 rounded"
           >
             Register
           </button>
+
         </div>
       </div>
     );
   }
 
-  // ================= DASHBOARD =================
+  // ================= DASHBOARD UI =================
 
   return (
-    <div className="min-h-screen bg-blue-900 flex justify-center pt-10">
-      <div className="bg-blue-800 w-full max-w-md p-6 rounded space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 text-white flex justify-center p-6">
 
-        <h2 className="text-white text-xl text-center">Dashboard</h2>
+      <div className="bg-blue-800 p-6 rounded-xl w-full max-w-md space-y-4">
+
+        <h2 className="text-xl font-bold text-center">
+          Dashboard
+        </h2>
 
         <select
           value={filter}
@@ -210,70 +242,77 @@ export default function App() {
         >
           <option>All</option>
           <option>Open</option>
+          <option>In Progress</option>
           <option>Closed</option>
         </select>
 
         <button
           onClick={logout}
-          className="w-full bg-red-500 py-2 rounded text-white"
+          className="w-full bg-red-500 py-2 rounded"
         >
           Logout
         </button>
 
         <input
-          className="w-full p-2 rounded text-black"
           placeholder="Title"
+          className="w-full p-2 rounded text-black"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
 
         <textarea
-          className="w-full p-2 rounded text-black"
           placeholder="Description"
+          className="w-full p-2 rounded text-black"
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
         />
 
         <button
-          onClick={addBug}
-          className="w-full bg-cyan-500 py-2 rounded text-white"
+          onClick={createBug}
+          className="w-full bg-cyan-500 py-2 rounded"
         >
           Add Bug
         </button>
 
         {filteredBugs.length === 0 && (
-          <p className="text-gray-300 text-center">No bugs found</p>
+          <p className="text-center text-gray-300">
+            No bugs found
+          </p>
         )}
 
-        {filteredBugs.map((b) => (
+        {filteredBugs.map((bug) => (
           <div
-            key={b._id}
-            className="bg-blue-700 p-3 rounded text-white"
+            key={bug._id}
+            className="bg-blue-700 p-3 rounded space-y-2"
           >
-            <h3 className="font-bold">{b.title}</h3>
-            <p>{b.desc}</p>
 
-            <div className="flex justify-between mt-2">
+            <h3 className="font-bold">{bug.title}</h3>
+
+            <p className="text-sm">{bug.description}</p>
+
+            <div className="flex gap-2">
 
               <select
-                value={b.status}
+                value={bug.status}
                 onChange={(e) =>
-                  updateStatus(b._id, e.target.value)
+                  updateStatus(bug._id, e.target.value)
                 }
-                className="text-black p-1 rounded"
+                className="p-1 rounded text-black flex-1"
               >
                 <option>Open</option>
+                <option>In Progress</option>
                 <option>Closed</option>
               </select>
 
               <button
-                onClick={() => delBug(b._id)}
+                onClick={() => delBug(bug._id)}
                 className="bg-orange-500 px-3 rounded"
               >
                 Delete
               </button>
 
             </div>
+
           </div>
         ))}
 
