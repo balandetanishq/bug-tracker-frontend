@@ -66,23 +66,27 @@ export default function App() {
 
   /* ================= FETCH ================= */
 
-  const fetchBugs = useCallback(async () => {
-    if (!token) return;
+const fetchBugs = useCallback(async () => {
+  if (!token) return;
 
-    try {
-      const res = await fetch(API + "/api/bugs", {
-        headers: {
-          Authorization: "Bearer " + token,
-        },
-      });
+  try {
+    const res = await fetch(API + "/api/bugs", {
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
 
-      const data = await res.json();
-
-      if (res.ok) setBugs(data);
-    } catch {
-      console.log("Fetch failed");
+    if (!res.ok) {
+      throw new Error("Fetch failed");
     }
-  }, [token]);
+
+    const data = await res.json();
+    setBugs(data);
+
+  } catch (err) {
+    console.error("Fetch failed", err);
+  }
+}, [token]);
 
   useEffect(() => {
     if (token) fetchBugs();
@@ -91,35 +95,39 @@ export default function App() {
   /* ================= ADD ================= */
 
   const createBug = async () => {
-    if (!title.trim()) return;
+  if (!title.trim()) return alert("Enter title");
 
-    try {
-      const res = await fetch(API + "/api/bugs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
-        body: JSON.stringify({
-          title,
-          description: desc,
-          project,
-          assignedTo: assigned,
-        }),
-      });
+  try {
+    const res = await fetch(API + "/api/bugs", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        title,
+        description: desc,
+      }),
+    });
 
-      if (res.ok) {
-        setTitle("");
-        setDesc("");
-        setProject("");
-        setAssigned("");
-        fetchBugs();
-      }
-    } catch {
-      alert("Add failed");
+    if (!res.ok) {
+      throw new Error("Add failed");
     }
-  };
 
+    const newBug = await res.json();
+
+    // Update UI instantly
+    setBugs((prev) => [newBug, ...prev]);
+
+    // Clear inputs
+    setTitle("");
+    setDesc("");
+
+  } catch (err) {
+    console.error(err);
+    alert("Add failed");
+  }
+};
   /* ================= DELETE ================= */
 
   const delBug = async (id) => {
