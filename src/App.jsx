@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "https://bug-tracker-backend-2-24nh.onrender.com"; // your backend
+const API = "https://bug-tracker-backend-2-24nh.onrender.com";
 
 export default function App() {
-  // ================= AUTH =================
+  /* ================= AUTH ================= */
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [token, setToken] = useState(
-    localStorage.getItem("token") || null
+    localStorage.getItem("token")
   );
 
-  // ================= BUG STATES =================
+  /* ================= BUG STATE ================= */
+
   const [bugs, setBugs] = useState([]);
 
   const [title, setTitle] = useState("");
@@ -19,9 +21,8 @@ export default function App() {
   const [project, setProject] = useState("");
   const [assigned, setAssigned] = useState("");
 
-  const [filter, setFilter] = useState("All");
+  /* ================= LOGIN ================= */
 
-  // ================= LOGIN =================
   const login = async () => {
     try {
       const res = await fetch(API + "/api/auth/login", {
@@ -43,7 +44,6 @@ export default function App() {
     }
   };
 
-  // ================= REGISTER =================
   const register = async () => {
     try {
       const res = await fetch(API + "/api/auth/register", {
@@ -59,13 +59,13 @@ export default function App() {
     }
   };
 
-  // ================= LOGOUT =================
   const logout = () => {
     localStorage.removeItem("token");
     setToken(null);
   };
 
-  // ================= FETCH BUGS =================
+  /* ================= FETCH ================= */
+
   const fetchBugs = useCallback(async () => {
     if (!token) return;
 
@@ -88,7 +88,8 @@ export default function App() {
     if (token) fetchBugs();
   }, [token, fetchBugs]);
 
-  // ================= ADD BUG =================
+  /* ================= ADD ================= */
+
   const createBug = async () => {
     if (!title.trim()) return;
 
@@ -113,15 +114,14 @@ export default function App() {
         setProject("");
         setAssigned("");
         fetchBugs();
-      } else {
-        alert("Add failed");
       }
     } catch {
       alert("Add failed");
     }
   };
 
-  // ================= DELETE =================
+  /* ================= DELETE ================= */
+
   const delBug = async (id) => {
     await fetch(API + "/api/bugs/" + id, {
       method: "DELETE",
@@ -133,7 +133,9 @@ export default function App() {
     fetchBugs();
   };
 
-  // ================= UPDATE =================
+  
+  /* ================= UPDATE ================= */
+
   const updateStatus = async (id, status) => {
     await fetch(API + "/api/bugs/" + id, {
       method: "PUT",
@@ -147,24 +149,22 @@ export default function App() {
     fetchBugs();
   };
 
-  // ================= FILTER =================
-  const filtered =
-    filter === "All"
-      ? bugs
-      : bugs.filter((b) => b.status === filter);
 
-  // ================= LOGIN UI =================
+  /* ================= LOGIN UI ================= */
+
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-900">
-        <div className="bg-white p-6 rounded w-80 space-y-3">
-          <h2 className="text-xl text-center font-bold">
-            Bug Tracker Login
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-900 text-white">
+
+        <div className="bg-slate-800 p-8 rounded-xl w-96 shadow-xl space-y-4">
+
+          <h2 className="text-3xl font-bold text-center">
+            🐞 Bug Tracker
           </h2>
 
           <input
             placeholder="Email"
-            className="w-full border p-2"
+            className="w-full p-3 rounded text-black"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -172,82 +172,82 @@ export default function App() {
           <input
             type="password"
             placeholder="Password"
-            className="w-full border p-2"
+            className="w-full p-3 rounded text-black"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
 
           <button
             onClick={login}
-            className="w-full bg-blue-600 text-white py-2"
+            className="w-full bg-indigo-600 py-2 rounded hover:bg-indigo-700"
           >
             Login
           </button>
 
           <button
             onClick={register}
-            className="w-full bg-gray-600 text-white py-2"
+            className="w-full bg-gray-600 py-2 rounded"
           >
             Register
           </button>
+
         </div>
       </div>
     );
   }
 
-  // ================= DASHBOARD =================
+  
+  /* ================= KANBAN ================= */
+
+  const todo = bugs.filter((b) => b.status === "ToDo");
+  const prog = bugs.filter((b) => b.status === "InProgress");
+  const done = bugs.filter((b) => b.status === "Done");
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-800 to-blue-600 p-4 text-white">
-      <div className="max-w-md mx-auto bg-blue-900 p-5 rounded-xl space-y-4">
+    <div className="min-h-screen flex bg-slate-900 text-white">
 
-        <h1 className="text-center text-2xl font-bold">
-          Bug Tracker Dashboard
-        </h1>
+      {/* SIDEBAR */}
+      <div className="w-64 bg-slate-800 p-6 space-y-4">
 
-        {/* FILTER */}
-        <select
-          className="w-full p-2 text-black"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        >
-          <option>All</option>
-          <option>ToDo</option>
-          <option>InProgress</option>
-          <option>Done</option>
-        </select>
+        <h2 className="text-2xl font-bold">
+          🐞 Bug Tracker
+        </h2>
 
         <button
           onClick={logout}
-          className="w-full bg-red-500 py-2 rounded"
+          className="w-full bg-red-600 py-2 rounded"
         >
           Logout
         </button>
 
-        {/* INPUTS */}
+        <hr className="border-gray-600" />
+
+        <h3 className="font-semibold">Create Bug</h3>
+
         <input
-          placeholder="Bug Title"
-          className="w-full p-2 text-black"
+          placeholder="Title"
+          className="w-full p-2 text-black rounded"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
 
         <textarea
           placeholder="Description"
-          className="w-full p-2 text-black"
+          className="w-full p-2 text-black rounded"
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
         />
 
         <input
-          placeholder="Project Name"
-          className="w-full p-2 text-black"
+          placeholder="Project"
+          className="w-full p-2 text-black rounded"
           value={project}
           onChange={(e) => setProject(e.target.value)}
         />
 
         <input
           placeholder="Assign To"
-          className="w-full p-2 text-black"
+          className="w-full p-2 text-black rounded"
           value={assigned}
           onChange={(e) => setAssigned(e.target.value)}
         />
@@ -259,53 +259,114 @@ export default function App() {
           Add Bug
         </button>
 
-        {/* BUG LIST */}
-        {filtered.length === 0 && (
-          <p className="text-center text-gray-300">
-            No bugs found
-          </p>
-        )}
-
-        {filtered.map((bug) => (
-          <div
-            key={bug._id}
-            className="bg-blue-700 p-3 rounded space-y-1"
-          >
-            <h3 className="font-bold">{bug.title}</h3>
-
-            <p className="text-sm">{bug.description}</p>
-
-            <p className="text-sm">
-              📁 {bug.project || "General"}
-            </p>
-
-            <p className="text-sm">
-              👤 {bug.assignedTo || "Unassigned"}
-            </p>
-
-            <div className="flex gap-2 mt-2">
-              <select
-                className="text-black p-1"
-                value={bug.status}
-                onChange={(e) =>
-                  updateStatus(bug._id, e.target.value)
-                }
-              >
-                <option>ToDo</option>
-                <option>InProgress</option>
-                <option>Done</option>
-              </select>
-
-              <button
-                onClick={() => delBug(bug._id)}
-                className="bg-orange-500 px-3 rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
       </div>
+
+      {/* MAIN */}
+      <div className="flex-1 p-6">
+
+        <h1 className="text-3xl font-bold mb-6">
+          Dashboard
+        </h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* TODO */}
+          <Column
+            title="To Do"
+            color="bg-blue-700"
+            data={todo}
+            update={updateStatus}
+            del={delBug}
+          />
+
+          {/* IN PROGRESS */}
+          <Column
+            title="In Progress"
+            color="bg-yellow-600"
+            data={prog}
+            update={updateStatus}
+            del={delBug}
+          />
+
+          {/* DONE */}
+          <Column
+            title="Done"
+            color="bg-green-700"
+            data={done}
+            update={updateStatus}
+            del={delBug}
+          />
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+/* ================= COLUMN COMPONENT ================= */
+
+function Column({ title, color, data, update, del }) {
+  return (
+    <div className="bg-slate-800 rounded-xl p-4 space-y-3">
+
+      <h2 className={`text-xl font-bold p-2 rounded ${color}`}>
+        {title}
+      </h2>
+
+      {data.length === 0 && (
+        <p className="text-gray-400 text-center">
+          Empty
+        </p>
+      )}
+
+      {data.map((bug) => (
+        <div
+          key={bug._id}
+          className="bg-slate-700 p-3 rounded space-y-1"
+        >
+
+          <h3 className="font-semibold">
+            {bug.title}
+          </h3>
+
+          <p className="text-sm text-gray-300">
+            {bug.description}
+          </p>
+
+          <p className="text-xs">
+            📁 {bug.project || "General"}
+          </p>
+
+          <p className="text-xs">
+            👤 {bug.assignedTo || "Unassigned"}
+          </p>
+
+          <div className="flex gap-2 mt-2">
+
+            <select
+              className="text-black text-sm p-1 rounded flex-1"
+              value={bug.status}
+              onChange={(e) =>
+                update(bug._id, e.target.value)
+              }
+            >
+              <option>ToDo</option>
+              <option>InProgress</option>
+              <option>Done</option>
+            </select>
+
+            <button
+              onClick={() => del(bug._id)}
+              className="bg-orange-500 px-2 rounded text-sm"
+            >
+              ✕
+            </button>
+
+          </div>
+
+        </div>
+      ))}
     </div>
   );
 }
