@@ -105,7 +105,6 @@ export default function App() {
   }, [token, fetchBugs]);
 
   // ================= ADD BUG =================
-
   const createBug = async () => {
     if (!title.trim()) return;
 
