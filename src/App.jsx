@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 const API = "https://bug-tracker-backend-2-24nh.onrender.com";
 
 export default function App() {
+
   /* ================= AUTH ================= */
 
   const [email, setEmail] = useState("");
@@ -11,6 +12,7 @@ export default function App() {
   const [token, setToken] = useState(
     localStorage.getItem("token")
   );
+
 
   /* ================= BUG STATE ================= */
 
@@ -21,116 +23,151 @@ export default function App() {
   const [project, setProject] = useState("");
   const [assigned, setAssigned] = useState("");
 
+
   /* ================= LOGIN ================= */
 
   const login = async () => {
+
     try {
+
       const res = await fetch(API + "/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
       if (data.token) {
+
         localStorage.setItem("token", data.token);
         setToken(data.token);
+
       } else {
         alert(data);
       }
+
     } catch {
       alert("Login failed");
     }
   };
 
+
   const register = async () => {
+
     try {
+
       const res = await fetch(API + "/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
+
       alert(data);
+
     } catch {
       alert("Register failed");
     }
   };
 
+
   const logout = () => {
+
     localStorage.removeItem("token");
     setToken(null);
   };
 
+
   /* ================= FETCH ================= */
 
-const fetchBugs = useCallback(async () => {
-  if (!token) return;
+  const fetchBugs = useCallback(async () => {
 
-  try {
-    const res = await fetch(API + "/api/bugs", {
-      headers: {
-        Authorization: "Bearer " + token,
-      },
-    });
+    if (!token) return;
 
-    if (!res.ok) {
-      throw new Error("Fetch failed");
+    try {
+
+      const res = await fetch(API + "/api/bugs", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      const data = await res.json();
+
+      setBugs(data);
+
+    } catch (err) {
+      console.error(err);
     }
 
-    const data = await res.json();
-    setBugs(data);
+  }, [token]);
 
-  } catch (err) {
-    console.error("Fetch failed", err);
-  }
-}, [token]);
 
   useEffect(() => {
+
     if (token) fetchBugs();
+
   }, [token, fetchBugs]);
 
-  /* ================= ADD ================= */
+
+  /* ================= ADD BUG ================= */
 
   const createBug = async () => {
-  if (!title.trim()) return alert("Enter title");
 
-  try {
-    const res = await fetch(API + "/api/bugs", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
-      },
-      body: JSON.stringify({
-        title,
-        description: desc,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Add failed");
+    if (!title.trim() || !desc.trim()) {
+      alert("Fill title and description");
+      return;
     }
 
-    const newBug = await res.json();
+    try {
 
-    // Update UI instantly
-    setBugs((prev) => [newBug, ...prev]);
+      const res = await fetch(API + "/api/bugs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
 
-    // Clear inputs
-    setTitle("");
-    setDesc("");
+        // ✅ SEND ALL FIELDS
+        body: JSON.stringify({
+          title,
+          description: desc,
+          project,
+          assignedTo: assigned,
+        }),
+      });
 
-  } catch (err) {
-    console.error(err);
-    alert("Add failed");
-  }
-};
+      if (!res.ok) {
+        alert("Add failed");
+        return;
+      }
+
+      const newBug = await res.json();
+
+      setBugs((old) => [newBug, ...old]);
+
+      // Clear form
+      setTitle("");
+      setDesc("");
+      setProject("");
+      setAssigned("");
+
+    } catch {
+      alert("Server error");
+    }
+  };
+
+
   /* ================= DELETE ================= */
 
   const delBug = async (id) => {
+
     await fetch(API + "/api/bugs/" + id, {
       method: "DELETE",
       headers: {
@@ -141,10 +178,11 @@ const fetchBugs = useCallback(async () => {
     fetchBugs();
   };
 
-  
+
   /* ================= UPDATE ================= */
 
   const updateStatus = async (id, status) => {
+
     await fetch(API + "/api/bugs/" + id, {
       method: "PUT",
       headers: {
@@ -161,6 +199,7 @@ const fetchBugs = useCallback(async () => {
   /* ================= LOGIN UI ================= */
 
   if (!token) {
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-indigo-900 text-white">
 
@@ -187,7 +226,7 @@ const fetchBugs = useCallback(async () => {
 
           <button
             onClick={login}
-            className="w-full bg-indigo-600 py-2 rounded hover:bg-indigo-700"
+            className="w-full bg-indigo-600 py-2 rounded"
           >
             Login
           </button>
@@ -204,12 +243,13 @@ const fetchBugs = useCallback(async () => {
     );
   }
 
-  
+
   /* ================= KANBAN ================= */
 
   const todo = bugs.filter((b) => b.status === "ToDo");
   const prog = bugs.filter((b) => b.status === "InProgress");
   const done = bugs.filter((b) => b.status === "Done");
+
 
   return (
     <div className="min-h-screen flex bg-slate-900 text-white">
@@ -269,6 +309,7 @@ const fetchBugs = useCallback(async () => {
 
       </div>
 
+
       {/* MAIN */}
       <div className="flex-1 p-6">
 
@@ -278,32 +319,9 @@ const fetchBugs = useCallback(async () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          {/* TODO */}
-          <Column
-            title="To Do"
-            color="bg-blue-700"
-            data={todo}
-            update={updateStatus}
-            del={delBug}
-          />
-
-          {/* IN PROGRESS */}
-          <Column
-            title="In Progress"
-            color="bg-yellow-600"
-            data={prog}
-            update={updateStatus}
-            del={delBug}
-          />
-
-          {/* DONE */}
-          <Column
-            title="Done"
-            color="bg-green-700"
-            data={done}
-            update={updateStatus}
-            del={delBug}
-          />
+          <Column title="To Do" color="bg-blue-700" data={todo} update={updateStatus} del={delBug} />
+          <Column title="In Progress" color="bg-yellow-600" data={prog} update={updateStatus} del={delBug} />
+          <Column title="Done" color="bg-green-700" data={done} update={updateStatus} del={delBug} />
 
         </div>
 
@@ -312,9 +330,11 @@ const fetchBugs = useCallback(async () => {
   );
 }
 
-/* ================= COLUMN COMPONENT ================= */
+
+/* ================= COLUMN ================= */
 
 function Column({ title, color, data, update, del }) {
+
   return (
     <div className="bg-slate-800 rounded-xl p-4 space-y-3">
 
@@ -329,6 +349,7 @@ function Column({ title, color, data, update, del }) {
       )}
 
       {data.map((bug) => (
+
         <div
           key={bug._id}
           className="bg-slate-700 p-3 rounded space-y-1"
@@ -343,11 +364,11 @@ function Column({ title, color, data, update, del }) {
           </p>
 
           <p className="text-xs">
-            📁 {bug.project || "General"}
+            📁 {bug.project}
           </p>
 
           <p className="text-xs">
-            👤 {bug.assignedTo || "Unassigned"}
+            👤 {bug.assignedTo}
           </p>
 
           <div className="flex gap-2 mt-2">
